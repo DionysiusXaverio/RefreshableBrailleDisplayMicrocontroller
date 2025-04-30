@@ -17,9 +17,13 @@ extern UART_HandleTypeDef huart2;
 #define wifi_uart &huart1
 #define pc_uart &huart2
 
+#define var_timing 1000
+
 char buffer[20];
 
 /*****************************************************************************************************************************************/
+
+int braille_arr[12] = {0,0,0,0,0,0,0,0,0,0,0,0};
 
 void ESP_Init (char *SSID, char *PASSWD)
 {
@@ -29,7 +33,7 @@ void ESP_Init (char *SSID, char *PASSWD)
 
 	Uart_sendstring("AT+RST\r\n", wifi_uart);
 	Uart_sendstring("RESETTING.", pc_uart);
-	for (int i=0; i<5; i++)
+	for (int i=0; i<7; i++)
 	{
 		Uart_sendstring(".", pc_uart);
 		HAL_Delay(1000);
@@ -58,7 +62,6 @@ void ESP_Init (char *SSID, char *PASSWD)
 	sprintf (data, "Connected to,\"%s\"\n\n", SSID);
 	Uart_sendstring(data,pc_uart);
 
-
 	/********* AT+CIFSR **********/
 	Uart_sendstring("AT+CIFSR\r\n", wifi_uart);
 	while (!(Wait_for("+CIFSR:STAIP,\"", wifi_uart)));
@@ -81,9 +84,6 @@ void ESP_Init (char *SSID, char *PASSWD)
 	Uart_sendstring("Now Connect to the IP ADRESS\n\n", pc_uart);
 
 }
-
-
-
 
 int Server_Send (char *str, int Link_ID)
 {
@@ -114,6 +114,13 @@ void Server_Start (void)
 
 	if (Wait_for("+IPD,", wifi_uart) == 1)
 	{
+//		uint32_t start_time = HAL_GetTick();
+//
+//		// Log start time
+//		char log_msg[64];
+//		sprintf(log_msg, "GET string received at %lu ms\r\n", start_time);
+//		Uart_sendstring(log_msg, pc_uart);
+
 		// Get Link ID
 		char link_id_char;
 		while (!IsDataAvailable(wifi_uart));
@@ -144,332 +151,682 @@ void Server_Start (void)
 			if (param_end)
 			{
 				*param_end = '\0'; // Null-terminate param string
-//				Reset_Braille();
-				// Handle parameters here
-//				do {
-//					if (strlen(param_start + char_count) == 1) {
-//						Handle_Braille(param_start[char_count]);
-//
-//						char_count += 1;
-//					} else if (strlen(param_start + char_count) == 2) {
-//						Handle_Braille_Mult(param_start[char_count], param_start[char_count+1]);
-//
-//						char_count += 2;
-//					}
-//					HAL_Delay(1000);
-////					else if (strlen(param_start) > 2) {
-////
-////
-////					}
-//				}
 
-//				End_Braille();
-//				while (param_start + char_count - 1 > 2);
 				// Optional debug
 				Uart_sendstring("GET parameters: ", pc_uart);
 				Uart_sendstring(param_start, pc_uart);
 				Uart_sendstring("\n", pc_uart);
 
+				sprintf(response,
+					"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\nOK\r\n");
+
+				Server_Send(response, Link_ID);
 //				Reset_Braille();
-				Handle_Braille(param_start[0]);
+//				Handle_Braille_Second(param_start[0]);
+
+//				Reset_Braille();
+//
+				uint32_t end_time = HAL_GetTick();
+//				sprintf(log_msg, "Finished processing at %lu ms\r\n", end_time);
+//				Uart_sendstring(log_msg, pc_uart);
+				do {
+						Handle_Braille_Second(param_start[char_count]);
+
+						char_count += 1;
+						HAL_Delay(1000);
+//						Reset_Braille();
+				} while (strlen(param_start) - char_count > 0);
+				Handle_Braille_Second('_');
+
+//				Reset_Braille();
+////
+//				do {
+//					if (strlen(param_start + char_count) == 1) {
+//						Handle_Braille_Mult(param_start[char_count], '/');
+//
+//						char_count += 1;
+//					}
+//					else if (strlen(param_start + char_count) == 2) {
+//						Handle_Braille_Mult(param_start[char_count], param_start[char_count+1]);
+//
+//						char_count += 2;
+////						HAL_Delay(var_timing);
+//
+//						Handle_Braille_Mult('/', '/');
+//					}
+//					else if (strlen(param_start) > 2) {
+//						Handle_Braille_Mult(param_start[char_count], param_start[char_count+1]);
+//
+//						char_count += 2;
+////						Reset_Braille();
+//					}
+//				} while (strlen(param_start) - char_count > 0);
 			}
 		}
 
-		// Send back a barebones HTTP response
-		sprintf(response,
-			"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\nOK\r\n");
 
-		Server_Send(response, Link_ID);
 	}
 }
 
 void Reset_Braille () {
-	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, 0);
-	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, 1);
-	HAL_Delay(500);
-	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, 1);
-	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11, 1);
-	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, 1);
-	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, 1);
-	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, 1);
-	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, 1);
-	HAL_Delay(500);
-	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, 0);
-	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, 1);
+  setvalue(0, 0, braille_arr);
+  setvalue(1, 0, braille_arr);
+  setvalue(2, 0, braille_arr);
+  setvalue(3, 0, braille_arr);
+  setvalue(4, 0, braille_arr);
+  setvalue(5, 0, braille_arr);
 
-
+  setvalue(6, 0, braille_arr);
+  setvalue(7, 0, braille_arr);
+  setvalue(8, 0, braille_arr);
+  setvalue(9, 0, braille_arr);
+  setvalue(10, 0, braille_arr);
+  setvalue(11, 0, braille_arr);
 }
+
+void Handle_Braille_Mult(char letter1, char letter2)
+{
+	Handle_Braille(letter1);
+	Handle_Braille_Second(letter2);
+}
+
+void setvalue(int value, int state, int* braille_arr){
+    if(braille_arr[value] == state){
+        return;
+    }
+    setpin(13,value/6);
+    setpin(8,(value % 6) % 2);
+    setpin(9,((value % 6) / 2) % 2);
+    setpin(10,((value % 6) / 4) % 2);
+    if(state == 0){
+        setpin(11,0);
+        setpin(12,1);
+        braille_arr[value] = 0;
+    }
+    if(state == 1){
+        setpin(11,1);
+        setpin(12,0);
+        braille_arr[value] = 1;
+    }
+
+    HAL_Delay(200);
+
+    setpin(11,0);
+    setpin(12,0);
+}
+
+void setpin(int pin, int state) {
+    if (state) {
+        GPIOB->BSRR = (1 << pin);  // Set pin (turn ON)
+    } else {
+        GPIOB->BSRR = (1 << (pin + 16)); // Reset pin (turn OFF)
+    }
+}
+
 
 void Handle_Braille (char letter) {
 	  if(letter == 'a' || letter == 'A')
 	  {
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, 1);
+		  setvalue(0, 1, braille_arr);
+		  setvalue(1, 0, braille_arr);
+		  setvalue(2, 0, braille_arr);
+		  setvalue(3, 0, braille_arr);
+		  setvalue(4, 0, braille_arr);
+		  setvalue(5, 0, braille_arr);
+
 	  }
 	  else if(letter == 'b' || letter == 'B')
 	  {
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, 1);
+		  setvalue(0, 1, braille_arr);
+		  setvalue(1, 0, braille_arr);
+		  setvalue(2, 1, braille_arr);
+		  setvalue(3, 0, braille_arr);
+		  setvalue(4, 0, braille_arr);
+		  setvalue(5, 0, braille_arr);
 	  }
 	  else if(letter == 'c' || letter == 'C')
 	  {
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, 1);
+		  setvalue(0, 1, braille_arr);
+		  setvalue(1, 1, braille_arr);
+		  setvalue(2, 0, braille_arr);
+		  setvalue(3, 0, braille_arr);
+		  setvalue(4, 0, braille_arr);
+		  setvalue(5, 0, braille_arr);
 	  }
 	  else if(letter == 'd' ||  letter == 'D')
 	  {
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, 1);
+		  setvalue(0, 1, braille_arr);
+		  setvalue(1, 1, braille_arr);
+		  setvalue(2, 0, braille_arr);
+		  setvalue(3, 1, braille_arr);
+		  setvalue(4, 0, braille_arr);
+		  setvalue(5, 0, braille_arr);
 	  }
 	  else if(letter == 'e' || letter == 'E')
 	  {
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, 1);
+		  setvalue(0, 1, braille_arr);
+		  setvalue(1, 0, braille_arr);
+		  setvalue(2, 0, braille_arr);
+		  setvalue(3, 1, braille_arr);
+		  setvalue(4, 0, braille_arr);
+		  setvalue(5, 0, braille_arr);
 	  }
 	  else if(letter == 'f' || letter == 'F')
 	  {
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, 1);
+		  setvalue(0, 1, braille_arr);
+		  setvalue(1, 1, braille_arr);
+		  setvalue(2, 1, braille_arr);
+		  setvalue(3, 0, braille_arr);
+		  setvalue(4, 0, braille_arr);
+		  setvalue(5, 0, braille_arr);
 	  }
 	  else if(letter == 'g' || letter == 'G')
 	  {
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, 1);
+		  setvalue(0, 1, braille_arr);
+		  setvalue(1, 1, braille_arr);
+		  setvalue(2, 1, braille_arr);
+		  setvalue(3, 1, braille_arr);
+		  setvalue(4, 0, braille_arr);
+		  setvalue(5, 0, braille_arr);
 	  }
 	  else if(letter == 'h' || letter == 'H')
 	  {
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, 1);
+		  setvalue(0, 1, braille_arr);
+		  setvalue(1, 0, braille_arr);
+		  setvalue(2, 1, braille_arr);
+		  setvalue(3, 1, braille_arr);
+		  setvalue(4, 0, braille_arr);
+		  setvalue(5, 0, braille_arr);
 	  }
 	  else if(letter == 'i' || letter == 'I')
 	  {
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, 0);
+		  setvalue(0, 0, braille_arr);
+		  setvalue(1, 1, braille_arr);
+		  setvalue(2, 1, braille_arr);
+		  setvalue(3, 0, braille_arr);
+		  setvalue(4, 0, braille_arr);
+		  setvalue(5, 0, braille_arr);
 	  }
 	  else if(letter == 'j' || letter == 'J')
 	  {
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, 0);
+		  setvalue(0, 0, braille_arr);
+		  setvalue(1, 1, braille_arr);
+		  setvalue(2, 1, braille_arr);
+		  setvalue(3, 1, braille_arr);
+		  setvalue(4, 0, braille_arr);
+		  setvalue(5, 0, braille_arr);
 	  }
 	  else if(letter == 'k' || letter == 'K')
 	  {
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, 1);
+		  setvalue(0, 1, braille_arr);
+		  setvalue(1, 0, braille_arr);
+		  setvalue(2, 0, braille_arr);
+		  setvalue(3, 0, braille_arr);
+		  setvalue(4, 1, braille_arr);
+		  setvalue(5, 0, braille_arr);
 	  }
 	  else if(letter == 'l' || letter == 'L')
 	  {
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, 1);
+		  setvalue(0, 1, braille_arr);
+		  setvalue(1, 0, braille_arr);
+		  setvalue(2, 1, braille_arr);
+		  setvalue(3, 0, braille_arr);
+		  setvalue(4, 1, braille_arr);
+		  setvalue(5, 0, braille_arr);
 	  }
 	  else if(letter == 'm' || letter == 'M')
 	  {
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, 1);
+		  setvalue(0, 1, braille_arr);
+		  setvalue(1, 1, braille_arr);
+		  setvalue(2, 0, braille_arr);
+		  setvalue(3, 0, braille_arr);
+		  setvalue(4, 1, braille_arr);
+		  setvalue(5, 0, braille_arr);
 	  }
 	  else if(letter == 'n' || letter == 'N')
 	  {
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, 1);
+		  setvalue(0, 1, braille_arr);
+		  setvalue(1, 1, braille_arr);
+		  setvalue(2, 0, braille_arr);
+		  setvalue(3, 1, braille_arr);
+		  setvalue(4, 1, braille_arr);
+		  setvalue(5, 0, braille_arr);
 	  }
 	  else if(letter == 'o' || letter == 'O')
 	  {
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, 1);
+		  setvalue(0, 1, braille_arr);
+		  setvalue(1, 0, braille_arr);
+		  setvalue(2, 0, braille_arr);
+		  setvalue(3, 1, braille_arr);
+		  setvalue(4, 1, braille_arr);
+		  setvalue(5, 0, braille_arr);
 	  }
 	  else if(letter == 'p' || letter == 'P')
 	  {
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, 1);
+		  setvalue(0, 1, braille_arr);
+		  setvalue(1, 1, braille_arr);
+		  setvalue(2, 1, braille_arr);
+		  setvalue(3, 0, braille_arr);
+		  setvalue(4, 1, braille_arr);
+		  setvalue(5, 0, braille_arr);
 	  }
 	  else if(letter == 'q' || letter == 'Q')
 	  {
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, 1);
+		  setvalue(0, 1, braille_arr);
+		  setvalue(1, 1, braille_arr);
+		  setvalue(2, 1, braille_arr);
+		  setvalue(3, 1, braille_arr);
+		  setvalue(4, 1, braille_arr);
+		  setvalue(5, 0, braille_arr);
 	  }
 	  else if(letter == 'r' || letter == 'R')
 	  {
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, 1);
+		  setvalue(0, 1, braille_arr);
+		  setvalue(1, 0, braille_arr);
+		  setvalue(2, 0, braille_arr);
+		  setvalue(3, 0, braille_arr);
+		  setvalue(4, 0, braille_arr);
+		  setvalue(5, 0, braille_arr);
 	  }
 	  else if(letter == 's' || letter == 'S')
 	  {
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, 0);
+		  setvalue(0, 0, braille_arr);
+		  setvalue(1, 1, braille_arr);
+		  setvalue(2, 1, braille_arr);
+		  setvalue(3, 0, braille_arr);
+		  setvalue(4, 1, braille_arr);
+		  setvalue(5, 0, braille_arr);
 	  }
 	  else if(letter == 't' || letter == 'T')
 	  {
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, 0);
+		  setvalue(0, 0, braille_arr);
+		  setvalue(1, 1, braille_arr);
+		  setvalue(2, 1, braille_arr);
+		  setvalue(3, 1, braille_arr);
+		  setvalue(4, 1, braille_arr);
+		  setvalue(5, 0, braille_arr);
 	  }
 	  else if(letter == 'u' || letter == 'U')
 	  {
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, 1);
+		  setvalue(0, 1, braille_arr);
+		  setvalue(1, 0, braille_arr);
+		  setvalue(2, 0, braille_arr);
+		  setvalue(3, 0, braille_arr);
+		  setvalue(4, 1, braille_arr);
+		  setvalue(5, 1, braille_arr);
 	  }
 	  else if(letter == 'v' || letter == 'V')
 	  {
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, 1);
+		  setvalue(0, 1, braille_arr);
+		  setvalue(1, 0, braille_arr);
+		  setvalue(2, 1, braille_arr);
+		  setvalue(3, 0, braille_arr);
+		  setvalue(4, 1, braille_arr);
+		  setvalue(5, 1, braille_arr);
 	  }
 	  else if(letter == 'w' || letter == 'W')
 	  {
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, 0);
+		  setvalue(0, 0, braille_arr);
+		  setvalue(1, 1, braille_arr);
+		  setvalue(2, 1, braille_arr);
+		  setvalue(3, 1, braille_arr);
+		  setvalue(4, 0, braille_arr);
+		  setvalue(5, 1, braille_arr);
 	  }
 	  else if(letter == 'x' || letter == 'X')
 	  {
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, 1);
+		  setvalue(0, 1, braille_arr);
+		  setvalue(1, 1, braille_arr);
+		  setvalue(2, 0, braille_arr);
+		  setvalue(3, 0, braille_arr);
+		  setvalue(4, 1, braille_arr);
+		  setvalue(5, 1, braille_arr);
 	  }
 	  else if(letter == 'y' || letter == 'Y')
 	  {
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, 1);
+		  setvalue(0, 1, braille_arr);
+		  setvalue(1, 1, braille_arr);
+		  setvalue(2, 0, braille_arr);
+		  setvalue(3, 1, braille_arr);
+		  setvalue(4, 1, braille_arr);
+		  setvalue(5, 1, braille_arr);
 	  }
 	  else if(letter == 'z' || letter == 'Z')
 	  {
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, 1);
+		  setvalue(0, 1, braille_arr);
+		  setvalue(1, 0, braille_arr);
+		  setvalue(2, 0, braille_arr);
+		  setvalue(3, 1, braille_arr);
+		  setvalue(4, 1, braille_arr);
+		  setvalue(5, 1, braille_arr);
 	  }
 	  else if(letter == '.')
 	  {
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, 0);
+		  setvalue(0, 0, braille_arr);
+		  setvalue(1, 0, braille_arr);
+		  setvalue(2, 1, braille_arr);
+		  setvalue(3, 1, braille_arr);
+		  setvalue(4, 0, braille_arr);
+		  setvalue(5, 1, braille_arr);
 	  }
 	  else if(letter == ',')
 	  {
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, 0);
+		  setvalue(0, 0, braille_arr);
+		  setvalue(1, 0, braille_arr);
+		  setvalue(2, 1, braille_arr);
+		  setvalue(3, 0, braille_arr);
+		  setvalue(4, 0, braille_arr);
+		  setvalue(5, 0, braille_arr);
 	  }
 	  else if(letter == '_')
 	  {
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, 0);
+		  setvalue(0, 0, braille_arr);
+		  setvalue(1, 0, braille_arr);
+		  setvalue(2, 0, braille_arr);
+		  setvalue(3, 0, braille_arr);
+		  setvalue(4, 0, braille_arr);
+		  setvalue(5, 0, braille_arr);
 	  }
-	  else if(letter == '#')
+	  else if(letter == '!')
 	  {
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, 1);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, 0);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, 0);
+		  setvalue(0, 0, braille_arr);
+		  setvalue(1, 0, braille_arr);
+		  setvalue(2, 1, braille_arr);
+		  setvalue(3, 1, braille_arr);
+		  setvalue(4, 1, braille_arr);
+		  setvalue(5, 0, braille_arr);
+	  }
+	  else if(letter == '?')
+	  {
+		  setvalue(0, 0, braille_arr);
+		  setvalue(1, 0, braille_arr);
+		  setvalue(2, 1, braille_arr);
+		  setvalue(3, 0, braille_arr);
+		  setvalue(4, 1, braille_arr);
+		  setvalue(5, 1, braille_arr);
+	  }
+}
+
+void Handle_Braille_Second (char letter) {
+	  if(letter == 'a' || letter == 'A')
+	  {
+		  setvalue(6, 1, braille_arr);
+		  setvalue(7, 0, braille_arr);
+		  setvalue(8, 0, braille_arr);
+		  setvalue(9, 0, braille_arr);
+		  setvalue(10, 0, braille_arr);
+		  setvalue(11, 0, braille_arr);
+
+	  }
+	  else if(letter == 'b' || letter == 'B')
+	  {
+		  setvalue(6, 1, braille_arr);
+		  setvalue(7, 0, braille_arr);
+		  setvalue(8, 1, braille_arr);
+		  setvalue(9, 0, braille_arr);
+		  setvalue(10, 0, braille_arr);
+		  setvalue(11, 0, braille_arr);
+	  }
+	  else if(letter == 'c' || letter == 'C')
+	  {
+		  setvalue(6, 1, braille_arr);
+		  setvalue(7, 1, braille_arr);
+		  setvalue(8, 0, braille_arr);
+		  setvalue(9, 0, braille_arr);
+		  setvalue(10, 0, braille_arr);
+		  setvalue(11, 0, braille_arr);
+	  }
+	  else if(letter == 'd' ||  letter == 'D')
+	  {
+		  setvalue(6, 1, braille_arr);
+		  setvalue(7, 1, braille_arr);
+		  setvalue(8, 0, braille_arr);
+		  setvalue(9, 1, braille_arr);
+		  setvalue(10, 0, braille_arr);
+		  setvalue(11, 0, braille_arr);
+	  }
+	  else if(letter == 'e' || letter == 'E')
+	  {
+		  setvalue(6, 1, braille_arr);
+		  setvalue(7, 0, braille_arr);
+		  setvalue(8, 0, braille_arr);
+		  setvalue(9, 1, braille_arr);
+		  setvalue(10, 0, braille_arr);
+		  setvalue(11, 0, braille_arr);
+	  }
+	  else if(letter == 'f' || letter == 'F')
+	  {
+		  setvalue(6, 1, braille_arr);
+		  setvalue(7, 1, braille_arr);
+		  setvalue(8, 1, braille_arr);
+		  setvalue(9, 0, braille_arr);
+		  setvalue(10, 0, braille_arr);
+		  setvalue(11, 0, braille_arr);
+	  }
+	  else if(letter == 'g' || letter == 'G')
+	  {
+		  setvalue(6, 1, braille_arr);
+		  setvalue(7, 1, braille_arr);
+		  setvalue(8, 1, braille_arr);
+		  setvalue(9, 1, braille_arr);
+		  setvalue(10, 0, braille_arr);
+		  setvalue(11, 0, braille_arr);
+	  }
+	  else if(letter == 'h' || letter == 'H')
+	  {
+		  setvalue(6, 1, braille_arr);
+		  setvalue(7, 0, braille_arr);
+		  setvalue(8, 1, braille_arr);
+		  setvalue(9, 1, braille_arr);
+		  setvalue(10, 0, braille_arr);
+		  setvalue(11, 0, braille_arr);
+	  }
+	  else if(letter == 'i' || letter == 'I')
+	  {
+		  setvalue(6, 0, braille_arr);
+		  setvalue(7, 1, braille_arr);
+		  setvalue(8, 1, braille_arr);
+		  setvalue(9, 0, braille_arr);
+		  setvalue(10, 0, braille_arr);
+		  setvalue(11, 0, braille_arr);
+	  }
+	  else if(letter == 'j' || letter == 'J')
+	  {
+		  setvalue(6, 0, braille_arr);
+		  setvalue(7, 1, braille_arr);
+		  setvalue(8, 1, braille_arr);
+		  setvalue(9, 1, braille_arr);
+		  setvalue(10, 0, braille_arr);
+		  setvalue(11, 0, braille_arr);
+	  }
+	  else if(letter == 'k' || letter == 'K')
+	  {
+		  setvalue(6, 1, braille_arr);
+		  setvalue(7, 0, braille_arr);
+		  setvalue(8, 0, braille_arr);
+		  setvalue(9, 0, braille_arr);
+		  setvalue(10, 1, braille_arr);
+		  setvalue(11, 0, braille_arr);
+	  }
+	  else if(letter == 'l' || letter == 'L')
+	  {
+		  setvalue(6, 1, braille_arr);
+		  setvalue(7, 0, braille_arr);
+		  setvalue(8, 1, braille_arr);
+		  setvalue(9, 0, braille_arr);
+		  setvalue(10, 1, braille_arr);
+		  setvalue(11, 0, braille_arr);
+	  }
+	  else if(letter == 'm' || letter == 'M')
+	  {
+		  setvalue(6, 1, braille_arr);
+		  setvalue(7, 1, braille_arr);
+		  setvalue(8, 0, braille_arr);
+		  setvalue(9, 0, braille_arr);
+		  setvalue(10, 1, braille_arr);
+		  setvalue(11, 0, braille_arr);
+	  }
+	  else if(letter == 'n' || letter == 'N')
+	  {
+		  setvalue(6, 1, braille_arr);
+		  setvalue(7, 1, braille_arr);
+		  setvalue(8, 0, braille_arr);
+		  setvalue(9, 1, braille_arr);
+		  setvalue(10, 1, braille_arr);
+		  setvalue(11, 0, braille_arr);
+	  }
+	  else if(letter == 'o' || letter == 'O')
+	  {
+		  setvalue(6, 1, braille_arr);
+		  setvalue(7, 0, braille_arr);
+		  setvalue(8, 0, braille_arr);
+		  setvalue(9, 1, braille_arr);
+		  setvalue(10, 1, braille_arr);
+		  setvalue(11, 0, braille_arr);
+	  }
+	  else if(letter == 'p' || letter == 'P')
+	  {
+		  setvalue(6, 1, braille_arr);
+		  setvalue(7, 1, braille_arr);
+		  setvalue(8, 1, braille_arr);
+		  setvalue(9, 0, braille_arr);
+		  setvalue(10, 1, braille_arr);
+		  setvalue(11, 0, braille_arr);
+	  }
+	  else if(letter == 'q' || letter == 'Q')
+	  {
+		  setvalue(6, 1, braille_arr);
+		  setvalue(7, 1, braille_arr);
+		  setvalue(8, 1, braille_arr);
+		  setvalue(9, 1, braille_arr);
+		  setvalue(10, 1, braille_arr);
+		  setvalue(11, 0, braille_arr);
+	  }
+	  else if(letter == 'r' || letter == 'R')
+	  {
+		  setvalue(6, 1, braille_arr);
+		  setvalue(7, 0, braille_arr);
+		  setvalue(8, 0, braille_arr);
+		  setvalue(9, 0, braille_arr);
+		  setvalue(10, 0, braille_arr);
+		  setvalue(11, 0, braille_arr);
+	  }
+	  else if(letter == 's' || letter == 'S')
+	  {
+		  setvalue(6, 0, braille_arr);
+		  setvalue(7, 1, braille_arr);
+		  setvalue(8, 1, braille_arr);
+		  setvalue(9, 0, braille_arr);
+		  setvalue(10, 1, braille_arr);
+		  setvalue(11, 0, braille_arr);
+	  }
+	  else if(letter == 't' || letter == 'T')
+	  {
+		  setvalue(6, 0, braille_arr);
+		  setvalue(7, 1, braille_arr);
+		  setvalue(8, 1, braille_arr);
+		  setvalue(9, 1, braille_arr);
+		  setvalue(10, 1, braille_arr);
+		  setvalue(11, 0, braille_arr);
+	  }
+	  else if(letter == 'u' || letter == 'U')
+	  {
+		  setvalue(6, 1, braille_arr);
+		  setvalue(7, 0, braille_arr);
+		  setvalue(8, 0, braille_arr);
+		  setvalue(9, 0, braille_arr);
+		  setvalue(10, 1, braille_arr);
+		  setvalue(11, 1, braille_arr);
+	  }
+	  else if(letter == 'v' || letter == 'V')
+	  {
+		  setvalue(6, 1, braille_arr);
+		  setvalue(7, 0, braille_arr);
+		  setvalue(8, 1, braille_arr);
+		  setvalue(9, 0, braille_arr);
+		  setvalue(10, 1, braille_arr);
+		  setvalue(11, 1, braille_arr);
+	  }
+	  else if(letter == 'w' || letter == 'W')
+	  {
+		  setvalue(6, 0, braille_arr);
+		  setvalue(7, 1, braille_arr);
+		  setvalue(8, 1, braille_arr);
+		  setvalue(9, 1, braille_arr);
+		  setvalue(10, 0, braille_arr);
+		  setvalue(11, 1, braille_arr);
+	  }
+	  else if(letter == 'x' || letter == 'X')
+	  {
+		  setvalue(6, 1, braille_arr);
+		  setvalue(7, 1, braille_arr);
+		  setvalue(8, 0, braille_arr);
+		  setvalue(9, 0, braille_arr);
+		  setvalue(10, 1, braille_arr);
+		  setvalue(11, 1, braille_arr);
+	  }
+	  else if(letter == 'y' || letter == 'Y')
+	  {
+		  setvalue(6, 1, braille_arr);
+		  setvalue(7, 1, braille_arr);
+		  setvalue(8, 0, braille_arr);
+		  setvalue(9, 1, braille_arr);
+		  setvalue(10, 1, braille_arr);
+		  setvalue(11, 1, braille_arr);
+	  }
+	  else if(letter == 'z' || letter == 'Z')
+	  {
+		  setvalue(6, 1, braille_arr);
+		  setvalue(7, 0, braille_arr);
+		  setvalue(8, 0, braille_arr);
+		  setvalue(9, 1, braille_arr);
+		  setvalue(10, 1, braille_arr);
+		  setvalue(11, 1, braille_arr);
+	  }
+	  else if(letter == '.')
+	  {
+		  setvalue(6, 0, braille_arr);
+		  setvalue(7, 0, braille_arr);
+		  setvalue(8, 1, braille_arr);
+		  setvalue(9, 1, braille_arr);
+		  setvalue(10, 0, braille_arr);
+		  setvalue(11, 1, braille_arr);
+	  }
+	  else if(letter == ',')
+	  {
+		  setvalue(6, 0, braille_arr);
+		  setvalue(7, 0, braille_arr);
+		  setvalue(8, 1, braille_arr);
+		  setvalue(9, 0, braille_arr);
+		  setvalue(10, 0, braille_arr);
+		  setvalue(11, 0, braille_arr);
+	  }
+	  else if(letter == '_')
+	  {
+		  setvalue(6, 0, braille_arr);
+		  setvalue(7, 0, braille_arr);
+		  setvalue(8, 0, braille_arr);
+		  setvalue(9, 0, braille_arr);
+		  setvalue(10, 0, braille_arr);
+		  setvalue(11, 0, braille_arr);
+	  }
+	  else if(letter == '!')
+	  {
+		  setvalue(6, 0, braille_arr);
+		  setvalue(7, 0, braille_arr);
+		  setvalue(8, 1, braille_arr);
+		  setvalue(9, 1, braille_arr);
+		  setvalue(10, 1, braille_arr);
+		  setvalue(11, 0, braille_arr);
+	  }
+	  else if(letter == '!')
+	  {
+		  setvalue(6, 0, braille_arr);
+		  setvalue(7, 0, braille_arr);
+		  setvalue(8, 1, braille_arr);
+		  setvalue(9, 0, braille_arr);
+		  setvalue(10, 1, braille_arr);
+		  setvalue(11, 1, braille_arr);
 	  }
 }
 

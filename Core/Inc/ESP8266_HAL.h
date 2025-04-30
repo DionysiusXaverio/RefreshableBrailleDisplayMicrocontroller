@@ -12,12 +12,12 @@ void ESP_Init (char *SSID, char *PASSWD);
 void Server_Start (void);
 
 void Handle_Braille (char letter);
+void Handle_Braille_Second (char letter);
+void Handle_Braille_Mult(char letter1, char letter2);
 
-//void Handle_Braille_Mult(char letter, char letter);
+void Reset_Braille ();
 
-//void Reset_Braille ();
-
-//void End_Braille ();
-
+void setpin(int pin, int state);
+void setvalue(int value, int state, int* braille_arr);
 
 #endif /* INC_ESP8266_HAL_H_ */

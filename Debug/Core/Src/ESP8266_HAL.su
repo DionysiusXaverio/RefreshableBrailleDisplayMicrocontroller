@@ -1,6 +1,10 @@
-../Core/Src/ESP8266_HAL.c:48:6:ESP_Init	112	static
-../Core/Src/ESP8266_HAL.c:112:5:Server_Send	112	static
-../Core/Src/ESP8266_HAL.c:127:6:Server_Handle	1048	static
-../Core/Src/ESP8266_HAL.c:156:6:Server_Start	808	static
-../Core/Src/ESP8266_HAL.c:231:6:Reset_Braille	8	static
-../Core/Src/ESP8266_HAL.c:248:6:Handle_Braille	16	static
+../Core/Src/ESP8266_HAL.c:28:6:ESP_Init	112	static
+../Core/Src/ESP8266_HAL.c:88:5:Server_Send	112	static
+../Core/Src/ESP8266_HAL.c:103:6:Server_Handle	16	static
+../Core/Src/ESP8266_HAL.c:108:6:Server_Start	816	static
+../Core/Src/ESP8266_HAL.c:211:6:Reset_Braille	8	static
+../Core/Src/ESP8266_HAL.c:227:6:Handle_Braille_Mult	16	static
+../Core/Src/ESP8266_HAL.c:233:6:setvalue	24	static
+../Core/Src/ESP8266_HAL.c:258:6:setpin	16	static
+../Core/Src/ESP8266_HAL.c:267:6:Handle_Braille	16	static
+../Core/Src/ESP8266_HAL.c:550:6:Handle_Braille_Second	16	static
